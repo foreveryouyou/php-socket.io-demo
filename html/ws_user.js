@@ -29,12 +29,11 @@
         checkUserInfo: function () {
             var userInfo = {};
             try {
-                userInfo = JSON.parse(localStorage.getItem(this.lsKey)) || {};
+                userInfo = JSON.parse(localStorage.getItem(this.lsKey));
             } catch (e) {
                 console.log(e.toString());
                 return e;
             }
-            console.log(userInfo);
             this.userId = userInfo.userId || '';
             this.sessionId = userInfo.sessionId || '';
             if (this.userId && this.sessionId) {

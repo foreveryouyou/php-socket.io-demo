@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User - PHPSocket.io</title>
+    <link rel="stylesheet" href="//cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="page-header">
+                <h1>PHPSocket.io - User
+                    <small>v1.0</small>
+                </h1>
+            </div>
+        </div>
+        <div class="form-horizontal">
+            <div class="form-group">
+                <label for="inputUsername" class="col-sm-2 control-label">会话ID</label>
+                <div class="col-sm-6">
+                    <input type="text" class="form-control" id="txtSid" readonly title="">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="inputUsername" class="col-sm-2 control-label">用户ID</label>
+                <div class="col-sm-6">
+                    <input type="text" class="form-control" id="txtUid" readonly title="">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="inputUsername" class="col-sm-2 control-label">用户名</label>
+                <div class="col-sm-6">
+                    <input type="text" class="form-control" id="inputUsername" placeholder="用户ID">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="inputPassword" class="col-sm-2 control-label">密码</label>
+                <div class="col-sm-6">
+                    <input type="password" class="form-control" id="inputPassword" placeholder="密码">
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-offset-2 col-sm-2">
+                    <button type="submit" id="btnLogin" class="btn btn-block btn-primary">登录</button>
+                    <button type="submit" id="btnLogout" class="btn btn-block btn-danger">退出</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="//cdn.bootcss.com/jquery/1.12.4/jquery.min.js"></script>
+<script src="//cdn.bootcss.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src='//cdn.bootcss.com/socket.io/2.0.3/socket.io.js'></script>
+<script src="//cdn.bootcss.com/layer/3.1.0/layer.js"></script>
+<script src='ws_user.js'></script>
+<script>
+    $(function () {
+        var lsKey = 'wsUserInfo',
+            wsUrl = 'http://192.168.20.220:16666',
+            ws = null;
+        var $username = $('#inputUsername'),
+            $password = $('#inputPassword'),
+            $sid = $('#txtSid'),
+            $uid = $('#txtUid'),
+            $btnLogin = $('#btnLogin'),
+            $btnLogout = $('#btnLogout');
+        // 根据userInfo设置dom的对应状态
+        var setStatus = function (userInfo) {
+            if (userInfo) {
+                $username.attr('disabled', true);
+                $password.attr('disabled', true);
+                $uid.val(userInfo.userId);
+                $sid.val(userInfo.sessionId);
+                $btnLogin.hide();
+                $btnLogout.show();
+            } else {
+                $username.val('').attr('disabled', false);
+                $password.val('').attr('disabled', false);
+                $uid.val('');
+                $sid.val('');
+                $btnLogin.show();
+                $btnLogout.hide();
+            }
+        };
+        var checkLogin = function () {
+            var userInfo = false;
+            try {
+                userInfo = JSON.parse(localStorage.getItem(lsKey));
+            } catch (e) {
+                console.log(e.toString());
+                return false;
+            }
+            if (userInfo.userId && userInfo.sessionId) {
+                return userInfo;
+            }
+            return false;
+        };
+        $btnLogin.on('click', function () {
+            layer.msg('login');
+            $.ajax({
+                url: 'ajax.php?act=login',
+                type: 'post',
+                data: {
+                    username: $username.val(),
+                    password: $password.val()
+                },
+                dataType: 'json'
+            }).done(function (data) {
+                layer.msg(data.message);
+                if (data.code === 0) {
+                    localStorage.setItem(lsKey, JSON.stringify(data.data));
+                    setStatus(data.data);
+                }
+            });
+        });
+        $btnLogout.on('click', function () {
+            // 退出成功, 将localStorage对应值置空
+            localStorage.setItem(lsKey, '{}');
+            setStatus({});
+        });
+        // 监听localStorage
+        window.addEventListener('storage', function (e) {
+            if (e.key === lsKey && checkLogin(lsKey)) {
+                if (!ws) {
+                    ws = new WS(io, wsUrl);
+                }
+            }
+        });
+
+        // --------------------------
+        setStatus(checkLogin());
+    });
+</script>
+</body>
+</html>
