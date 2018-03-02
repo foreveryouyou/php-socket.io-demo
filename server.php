@@ -85,10 +85,12 @@ $io->on('connection', function ($socket) use ($io, &$users) {
 	$id = $socket->id;
 	$address = $socket->conn->remoteAddress;
 	$ip = explode(':', $address);
-	echo "connected: id: {$id}, {$address}, online:\n";
+	echo "connected: id: {$id}, {$address}, online users:" . count($users) . "\n";
 
 	$socket->on('user connect', function ($uid, $sessionId) use ($io, $socket, &$users, $ip) {
 		// 应该异步, 这里为了简化用数组同步模拟memcache
+		$socket->uid = $uid;
+		$socket->sessionId = $sessionId;
 		$memKey = 'mem_' . $uid;
 		if (!isset($users[$memKey])) {
 			$users[$memKey] = [
@@ -102,26 +104,55 @@ $io->on('connection', function ($socket) use ($io, &$users) {
 				'connList'    => []
 			];
 		}
-		$user = $users[$memKey];
+		$user = &$users[$memKey];
 		if (!in_array($ip[0], $user['ipList'])) {
 			// ip不在白名单, 禁止登录, 这里可以通知前端并断开连接
+			echo $ip[0] . " not in ipList\n";
 			return;
 		}
 		if (count($user['sessionList']) >= $user['limit']) {
 			// 数量已满, 禁止登录, 这里可以通知前端并断开连接
+			echo "limit\n";
 			return;
 		}
-		// todo 更新$users
-
-		$socket->emit('login', json_encode([$uid, $sessionId]));
+		if (!isset($user['sessionList'][$sessionId])) {
+			$user['sessionList'][$sessionId] = 0;
+		}
+		$user['sessionList'][$sessionId] += 1;
+		$user['connList'][$socket->id] = [
+			'ip'   => $ip,
+			'time' => time(),
+			'sid'  => $sessionId
+		];
+		$socket->emit('user connected', json_encode([$users]));
 	});
 	// 断开连接尚未离开room
 	$socket->on('disconnecting', function ($reason) use ($io, $id, $address) {
 		echo "disconnecting: id: {$id}, {$address}\n";
 	});
 	// 已断开连接
-	$socket->on('disconnect', function ($reason) use ($io, $id, $address) {
-		echo "disconnected: id: {$id}, {$address}, online:\n";
+	$socket->on('disconnect', function ($reason) use ($io, $socket, $ip, &$users) {
+		$connId = $socket->id;
+		$address = $socket->conn->remoteAddress;
+		$uid = $socket->uid;
+		$sessionId = $socket->sessionId;
+		echo "disconnected: id: {$connId}, {$address},{$uid},{$sessionId} online:\n";
+		$memKey = 'mem_' . $uid;
+		if (!isset($users[$memKey])) {
+			// 无记录, 不操作
+			echo "no record\n";
+			return;
+		}
+		$user = &$users[$memKey];
+		if (isset($user['connList'][$connId])) {
+			if (isset($user['sessionList'][$sessionId])) {
+				$user['sessionList'][$sessionId] -= 1;
+				if ($user['sessionList'][$sessionId] <= 0) {
+					unset($user['sessionList'][$sessionId]);
+				}
+			}
+			unset($user['connList'][$connId]);
+		}
 	});
 	// 连接出错
 	$socket->on('error', function ($error) use ($io) {
