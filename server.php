@@ -124,7 +124,12 @@ $io->on('connection', function ($socket) use ($io, &$users) {
 			'time' => time(),
 			'sid'  => $sessionId
 		];
-		$socket->emit('user connected', json_encode($users));
+		$socket->emit('user connected', 'welcome');
+		$io->to('admin')->emit('admin info', '连接: ' . json_encode($users));
+	});
+	$socket->on('admin connect', function () use ($io, $socket, $users) {
+		$socket->join('admin');
+		$io->to('admin')->emit('admin info', json_encode($users));
 	});
 	// 断开连接尚未离开room
 	$socket->on('disconnecting', function ($reason) use ($io, $id, $address) {
@@ -137,6 +142,7 @@ $io->on('connection', function ($socket) use ($io, &$users) {
 		$uid = $socket->uid;
 		$sessionId = $socket->sessionId;
 		echo "disconnected: id: {$connId}, {$address},{$uid},{$sessionId} online:\n";
+		$io->to('admin')->emit('admin info', '断开: ' . json_encode($users));
 		$memKey = 'mem_' . $uid;
 		if (!isset($users[$memKey])) {
 			// 无记录, 不操作

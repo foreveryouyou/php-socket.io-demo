@@ -56,6 +56,11 @@
             socket.on('user connected', function (msg) {
                 console.log('user connected: ' + msg + ' from server');
             });
+        },
+        disconnect: function () {
+            if (this.socket) {
+                this.socket.close();
+            }
         }
     });
     window.WS = WS;
