@@ -76,21 +76,9 @@
 <script src="https://cdn.bootcss.com/jquery/1.12.4/jquery.min.js"></script>
 <script src="https://cdn.bootcss.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 <script src='http://cdn.bootcss.com/socket.io/2.0.3/socket.io.js'></script>
+<script src='ws.js'></script>
 <script>
-    // 如果服务端不在本机，请把127.0.0.1改成服务端ip
-    var socket = io('http://192.168.20.220:16666');
-    // 当连接服务端成功时触发connect默认事件
-    socket.on('connect', function (msg) {
-        console.log('connect success, connId:', socket.id);
-        socket.emit('user connect', userId = 'userId:666', sessionId = 'session_999');
-    });
-    // 服务端通过emit('chat message from server', $msg)触发客户端的chat message from server事件
-    socket.on('group info', function (msg) {
-        console.log('get message:' + msg + ' from server');
-    });
-    socket.on('user connected', function (msg) {
-        console.log('user connected: ' + msg + ' from server');
-    });
+    var ws = new WS(io,'http://192.168.20.220:16666');
 </script>
 </body>
 </html>

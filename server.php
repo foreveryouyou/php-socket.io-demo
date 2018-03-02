@@ -124,7 +124,7 @@ $io->on('connection', function ($socket) use ($io, &$users) {
 			'time' => time(),
 			'sid'  => $sessionId
 		];
-		$socket->emit('user connected', json_encode([$users]));
+		$socket->emit('user connected', json_encode($users));
 	});
 	// 断开连接尚未离开room
 	$socket->on('disconnecting', function ($reason) use ($io, $id, $address) {
