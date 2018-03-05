@@ -151,7 +151,7 @@ $io->on('connection', function ($socket) use ($io, $memcache, &$users) {
 		$address = $socket->conn->remoteAddress;
 		$uid = $socket->uid;
 		$sessionId = $socket->sessionId;
-		echo "disconnected: id: {$connId}, {$address},{$uid},{$sessionId} online:\n";
+		echo "\ndisconnected: id: {$connId}, {$address},{$uid},{$sessionId}\n";
 		$io->to('admin')->emit('admin info', '断开: ' . json_encode($users));
 		$memKey = 'mem_' . $uid;
 		$user = $memcache->get($memKey);
