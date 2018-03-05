@@ -116,6 +116,7 @@ $io->on('connection', function ($socket) use ($io, $memcache, &$users) {
 		if (!in_array($ip[0], $user['ipList'])) {
 			// ip不在白名单, 禁止登录, 这里可以通知前端并断开连接
 			echo $ip[0] . " not in ipList\n";
+			$socket->disconnect();
 			return;
 		}
 		if (count($user['sessionList']) >= $user['limit']) {
