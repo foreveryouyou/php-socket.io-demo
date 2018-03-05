@@ -31,6 +31,7 @@
 	# 关闭连接
 	$socket->disconnect();
 */
+error_reporting(E_ERROR);
 require_once __DIR__ . '/conf.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
@@ -77,23 +78,29 @@ use PHPSocketIO\SocketIO;
  */
 // 用户列表, 未考虑并发加锁
 $users = [];
+if (!$memHost || !$memPort) {
+	die("memcache 连接配置不正确\n");
+}
+$memcache = new Memcache;
+$memcache->connect($memHost, $memPort) or die ("无法连接memcache\n");
 
 // 创建socket.io服务端，监听$wsPort端口
 $io = new SocketIO($wsPort);
 // 当有客户端连接时
-$io->on('connection', function ($socket) use ($io, &$users) {
+$io->on('connection', function ($socket) use ($io, $memcache, &$users) {
 	$id = $socket->id;
 	$address = $socket->conn->remoteAddress;
 	$ip = explode(':', $address);
 	echo "connected: id: {$id}, {$address}, online users:" . count($users) . "\n";
 
-	$socket->on('user connect', function ($uid, $sessionId) use ($io, $socket, &$users, $ip) {
+	$socket->on('user connect', function ($uid, $sessionId) use ($io, $socket, &$memcache, &$users, $ip) {
 		// 应该异步, 这里为了简化用数组同步模拟memcache
 		$socket->uid = $uid;
 		$socket->sessionId = $sessionId;
 		$memKey = 'mem_' . $uid;
-		if (!isset($users[$memKey])) {
-			$users[$memKey] = [
+		$user = $memcache->get($memKey);
+		if (!$user) {
+			$user = [
 				'limit'       => 10,
 				'ipList'      => [
 					'192.168.20.55',
@@ -104,7 +111,7 @@ $io->on('connection', function ($socket) use ($io, &$users) {
 				'connList'    => []
 			];
 		}
-		$user = &$users[$memKey];
+		$memcache->set($memKey, $user);
 		if (!in_array($ip[0], $user['ipList'])) {
 			// ip不在白名单, 禁止登录, 这里可以通知前端并断开连接
 			echo $ip[0] . " not in ipList\n";
@@ -124,6 +131,7 @@ $io->on('connection', function ($socket) use ($io, &$users) {
 			'time' => time(),
 			'sid'  => $sessionId
 		];
+		$memcache->set($memKey, $user);
 		$socket->emit('user connected', 'welcome');
 		$io->to('admin')->emit('admin info', '连接: ' . json_encode($users));
 	});
@@ -136,7 +144,7 @@ $io->on('connection', function ($socket) use ($io, &$users) {
 		echo "disconnecting: id: {$id}, {$address}\n";
 	});
 	// 已断开连接
-	$socket->on('disconnect', function ($reason) use ($io, $socket, $ip, &$users) {
+	$socket->on('disconnect', function ($reason) use ($io, $socket, &$memcache, $ip, &$users) {
 		$connId = $socket->id;
 		$address = $socket->conn->remoteAddress;
 		$uid = $socket->uid;
@@ -144,12 +152,12 @@ $io->on('connection', function ($socket) use ($io, &$users) {
 		echo "disconnected: id: {$connId}, {$address},{$uid},{$sessionId} online:\n";
 		$io->to('admin')->emit('admin info', '断开: ' . json_encode($users));
 		$memKey = 'mem_' . $uid;
-		if (!isset($users[$memKey])) {
+		$user = $memcache->get($memKey);
+		if (!$user) {
 			// 无记录, 不操作
 			echo "no record\n";
 			return;
 		}
-		$user = &$users[$memKey];
 		if (isset($user['connList'][$connId])) {
 			if (isset($user['sessionList'][$sessionId])) {
 				$user['sessionList'][$sessionId] -= 1;
@@ -159,6 +167,7 @@ $io->on('connection', function ($socket) use ($io, &$users) {
 			}
 			unset($user['connList'][$connId]);
 		}
+		$memcache->set($memKey, $user);
 	});
 	// 连接出错
 	$socket->on('error', function ($error) use ($io) {

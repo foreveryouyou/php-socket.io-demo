@@ -37,7 +37,7 @@
             <div class="form-group">
                 <label for="inputPassword" class="col-sm-2 control-label">密码</label>
                 <div class="col-sm-6">
-                    <input type="password" class="form-control" id="inputPassword" placeholder="密码">
+                    <input type="text" class="form-control" id="inputPassword" placeholder="密码">
                 </div>
             </div>
             <div class="form-group">
@@ -57,7 +57,7 @@
 <script>
     $(function () {
         var lsKey = 'wsUserInfo',
-            wsUrl = 'http://192.168.20.220:16666',
+            wsUrl = 'http://ws.qwg.io:16666',
             ws = null;
         var $username = $('#inputUsername'),
             $password = $('#inputPassword'),
@@ -74,13 +74,26 @@
                 $sid.val(userInfo.sessionId);
                 $btnLogin.hide();
                 $btnLogout.show();
+                if (!ws) {
+                    ws = new WS({
+                        io: io,
+                        url: wsUrl,
+                        cbConnected: function () {
+                        },
+                        cbClose: function () {
+                        }
+                    });
+                }
             } else {
-                $username.val('').attr('disabled', false);
-                $password.val('').attr('disabled', false);
                 $uid.val('');
                 $sid.val('');
+                $username.val('').attr('disabled', false);
+                $password.val('').attr('disabled', false);
                 $btnLogin.show();
                 $btnLogout.hide();
+                if (ws) {
+                    ws.disconnect();
+                }
             }
         };
         var checkLogin = function () {
@@ -91,7 +104,7 @@
                 console.log(e.toString());
                 return false;
             }
-            if (userInfo.userId && userInfo.sessionId) {
+            if (userInfo && userInfo.userId && userInfo.sessionId) {
                 return userInfo;
             }
             return false;
@@ -116,15 +129,13 @@
         });
         $btnLogout.on('click', function () {
             // 退出成功, 将localStorage对应值置空
-            localStorage.setItem(lsKey, '{}');
-            setStatus({});
+            localStorage.setItem(lsKey, '');
+            setStatus(false);
         });
         // 监听localStorage
         window.addEventListener('storage', function (e) {
-            if (e.key === lsKey && checkLogin(lsKey)) {
-                if (!ws) {
-                    ws = new WS(io, wsUrl);
-                }
+            if (e.key === lsKey) {
+                setStatus(checkLogin());
             }
         });
 
