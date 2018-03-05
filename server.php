@@ -103,9 +103,10 @@ $io->on('connection', function ($socket) use ($io, $memcache, &$users) {
 			$user = [
 				'limit'       => 10,
 				'ipList'      => [
-					'192.168.20.55',
+					'192.168.20.55', // 本机内网ip
 					'192.168.20.56',
 					'192.168.20.57',
+					'116.247.98.179', // 公司外网ip
 				],
 				'sessionList' => [],
 				'connList'    => []
