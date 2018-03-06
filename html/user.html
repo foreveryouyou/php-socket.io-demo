@@ -57,7 +57,7 @@
 <script>
     $(function () {
         var lsKey = 'wsUserInfo',
-            wsUrl = 'http://ws.qwg.io:16666',
+            wsUrl = 'http://192.168.20.244:16666',
             ws = null;
         var $username = $('#inputUsername'),
             $password = $('#inputPassword'),
@@ -76,6 +76,7 @@
                 $btnLogout.show();
                 if (!ws) {
                     ws = new WS({
+                        debug: true,
                         io: io,
                         url: wsUrl,
                         cbConnected: function () {
